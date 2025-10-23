@@ -1,3 +1,5 @@
+// game.service.js
+
 const { Chess } = require("chess.js");
 const Game = require("./game.model");
 
@@ -45,6 +47,7 @@ async function createGameRoom(a, b, timeControl) {
     clocks: startClocks(tc),
     turnStamp: now(),
     moves: [],
+    captures: { w: [], b: [] }, // <- store captured piece types per capturer ('p','n','b','r','q','k' rarely)
     drawOfferedBy: null,
   };
   games.set(id, room);
