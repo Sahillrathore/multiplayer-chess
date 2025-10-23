@@ -46,7 +46,11 @@ export default function ChessGame() {
   const [pastGames, setPastGames] = useState([]);
   const [loadingGames, setLoadingGames] = useState(false);
   const [gamesErr, setGamesErr] = useState("");
+  const [captures, setCaptures] = useState({ w: [], b: [] }); // <- trays
 
+  // client-side ticking base
+  const syncRef = useRef({ base: { w: 300000, b: 300000 }, turn: "w", ts: Date.now(), status: "idle" });
+  const [tick, setTick] = useState(0);
   // optional “review” flag, so loading a past game doesn’t interfere with live play
   const [reviewing, setReviewing] = useState(false);
 
@@ -69,6 +73,57 @@ export default function ChessGame() {
       setLoadingGames(false);
     }
   }, [isAuthed, token]);
+
+  // utils (inside ChessGame.jsx or in a small utils file)
+  const pad2 = (n) => (n < 10 ? "0" + n : "" + n);
+  const fmt = (ms) => {
+    if (ms < 0) ms = 0;
+    const total = Math.floor(ms / 1000);
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return `${m}:${pad2(s)}`;
+  };
+
+  // Unicode glyphs for captured pieces (we show the color of the piece that was captured)
+  const glyph = (type, color /* 'w'|'b' */) => {
+    const mapW = { k: "♔", q: "♕", r: "♖", b: "♗", n: "♘", p: "♙" };
+    const mapB = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
+    const t = (type || "p").toLowerCase();
+    return color === "w" ? mapW[t] : mapB[t];
+  };
+
+  // ---------- LIVE CLOCK TICK ----------
+  useEffect(() => {
+    let raf;
+    const loop = () => {
+
+      // re-render; we’ll compute visible time from syncRef during render
+      setTick(Date.now());
+      raf = window.requestAnimationFrame(loop);
+    };
+    raf = window.requestAnimationFrame(loop);
+    return () => window.cancelAnimationFrame(raf);
+  }, []);
+
+  // compute display clocks from syncRef (no setState thrash)
+  // const displayClocks = useMemo(() => {
+  //   const { base, turn: t, ts, status: st } = syncRef.current;
+  //   const elapsed = Math.max(0, Date.now() - ts);
+  //   const w = st === "active" && t === "w" ? Math.max(0, base.w - elapsed) : base.w;
+  //   const b = st === "active" && t === "b" ? Math.max(0, base.b - elapsed) : base.b;
+  //   return { w, b };
+  // }, [/* depends on forceTick state implicitly */]);
+
+  // derive (on every render) using tick as a passive trigger
+  const displayClocks = (() => {
+    tick; // reference so React re-renders
+    const { base, turn: t, ts, status: st } = syncRef.current;
+    const elapsed = Math.max(0, Date.now() - ts);
+    return {
+      w: st === "active" && t === "w" ? Math.max(0, base.w - elapsed) : base.w,
+      b: st === "active" && t === "b" ? Math.max(0, base.b - elapsed) : base.b,
+    };
+  })();
 
   useEffect(() => {
     if (sideTab === "games") loadPastGames();
@@ -148,27 +203,60 @@ export default function ChessGame() {
       setFen(chess.fen());
       setMoves([]);
       setTurn("w");
+      setCaptures({ w: [], b: [] });
+      const init = { w: tcSeconds * 1000, b: tcSeconds * 1000 };
+      setClocks(init);
+      syncRef.current = { base: init, turn: "w", ts: Date.now(), status: "active" };
     });
 
-    s.on("game:state", ({ fen, moves, clocks, turn, status }) => {
+    // NEW: resume active game after reconnect/refresh
+    s.on("game:resume", ({ gameId, color, fen, moves, clocks, turn, status, captures }) => {
+      setGameId(gameId);
+      setColor(color);
+      setStatus(status || "active");
+      try { chess.load(fen); } catch { }
+      setFen(fen);
+      setMoves(moves || []);
+      setClocks(clocks || { w: 300000, b: 300000 });
+      setTurn(turn || chess.turn());
+      setCaptures(captures || { w: [], b: [] });
+      syncRef.current = {
+        base: clocks || { w: 300000, b: 300000 },
+        turn: turn || chess.turn(),
+        ts: Date.now(),
+        status: status || "active",
+      };
+    });
+
+    // s.on("game:state", ({ fen, moves, clocks, turn, status }) => {
+    s.on("game:state", ({ fen, moves, clocks, turn, status, captures }) => {
       try { chess.load(fen); } catch { }
       setFen(fen);
       setMoves(moves || []);
       setClocks(clocks || { w: 300000, b: 300000 });
       setTurn(turn || chess.turn());
       setStatus(status || "active");
+      if (captures) setCaptures(captures);     // reset ticking base on every authoritative sync
+      if (clocks && turn) {
+        syncRef.current = { base: { ...clocks }, turn, ts: Date.now(), status: status || "active" };
+      }
     });
 
-    s.on("game:move", ({ fen, clocks }) => {
+    // s.on("game:move", ({ fen, clocks }) => {
+    s.on("game:move", ({ fen, clocks, captures: capEcho }) => {
       try { chess.load(fen); } catch { }
       setFen(fen);
       setClocks(clocks);
       setTurn(chess.turn());
+      if (capEcho) setCaptures(capEcho);
+      // switch turn -> new base for ticking
+      syncRef.current = { base: { ...clocks }, turn: chess.turn(), ts: Date.now(), status: "active" };
     });
 
     s.on("game:ended", ({ result, reason, pgn }) => {
       setStatus("ended");
       alert(`${result} — ${reason}\n\n${pgn}`);
+      syncRef.current = { ...syncRef.current, status: "ended" };
     });
 
     s.on("game:drawOffered", ({ by }) => {
@@ -183,7 +271,8 @@ export default function ChessGame() {
       socketRef.current = null;
       setConnected(false);
     };
-  }, [token]);
+  }, [token, tcSeconds]); // if you change base time mid-session, new games sync properly
+  // }, [token]);
 
   // actions
   const findMatch = () => {
@@ -242,7 +331,7 @@ export default function ChessGame() {
           </div>
           <div className="flex items-center gap-2">
             <div className="rounded-full bg-white/10 px-3 py-1 text-xs text-zinc-300">
-              W: {Math.ceil(clocks.w / 1000)}s · B: {Math.ceil(clocks.b / 1000)}s
+              W: {fmt(displayClocks.w)} · B: {fmt(displayClocks.b)}
             </div>
             {isAuthed ? (
               <>
@@ -276,6 +365,15 @@ export default function ChessGame() {
                 {statusText}
               </div>
 
+              {/* Captured by Opponent */}
+              <div className="mb-2 flex flex-wrap items-center gap-1 text-xl opacity-80">
+                {(color === "w" ? captures.b : captures.w).map((t, i) => (
+                  <span key={`oc-${i}`} title={`Opponent captured ${t}`}>
+                    {glyph(t, color === "w" ? "w" : "b")}
+                  </span>
+                ))}
+              </div>
+
               <Chessboard
                 position={fen}
                 onPieceDrop={onDrop}
@@ -287,6 +385,16 @@ export default function ChessGame() {
                 customDarkSquareStyle={{ backgroundColor: "#769656" }}
                 customLightSquareStyle={{ backgroundColor: "#eeeed2" }}
               />
+
+              {/* Captured by You (pieces you have taken from opponent) */}
+              <div className="mt-2 flex flex-wrap items-center gap-1 text-xl">
+                {(color === "w" ? captures.w : captures.b).map((t, i) => (
+                  <span key={`yc-${i}`} title={`Captured ${t}`}>
+                    {glyph(t, color === "w" ? "b" : "w")}
+                  </span>
+                ))}
+              </div>
+
 
               {/* controls under board */}
               <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -452,7 +560,7 @@ export default function ChessGame() {
                       {user?.email || "You"} {color ? `(${color === "w" ? "White" : "Black"})` : ""}
                     </div>
                     <div className="rounded-full bg-white/10 px-3 py-1 text-xs">
-                      {Math.ceil((color === "w" ? clocks.w : clocks.b) / 1000)}s
+                      {fmt(color === "w" ? displayClocks.w : displayClocks.b)}
                     </div>
                   </div>
                 </div>

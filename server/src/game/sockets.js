@@ -1,3 +1,5 @@
+//sockets.js
+
 const { Server } = require("socket.io");
 const { ORIGINS } = require("../config");
 const { verify } = require("../jwt");
@@ -39,12 +41,23 @@ function attachSocketServer(httpServer) {
             if (g.white.userId === socket.userId) {
                 g.white.socketId = socket.id;
                 io.sockets.sockets.get(socket.id)?.join(g.id);
-                emitState(io, g);
+                // emitState(io, g);
+                // send a *direct* resume event with color + all state
+                io.to(socket.id).emit("game:resume", {
+                    gameId: g.id, color: "w",
+                    fen: g.chess.fen(), moves: g.moves, turn: g.chess.turn(),
+                    clocks: g.clocks, status: g.status, captures: g.captures
+                });
             }
             if (g.black.userId === socket.userId) {
                 g.black.socketId = socket.id;
                 io.sockets.sockets.get(socket.id)?.join(g.id);
-                emitState(io, g);
+                // emitState(io, g);
+                io.to(socket.id).emit("game:resume", {
+                    gameId: g.id, color: "b",
+                    fen: g.chess.fen(), moves: g.moves, turn: g.chess.turn(),
+                    clocks: g.clocks, status: g.status, captures: g.captures
+                });
             }
         }
 
@@ -90,11 +103,26 @@ function attachSocketServer(httpServer) {
             if (!move) return socket.emit("error", { code: "ILLEGAL_MOVE", message: "Illegal move" });
 
             applyIncrement(g, side);
+
+            // capture tray update
+            // move.captured is like 'p','n','b','r','q','k' (lowercase type of the piece that got captured)
+            if (move.captured) {
+                g.captures[side].push(move.captured);
+            }
+
             g.moves.push({ san: move.san, from, to, fen: g.chess.fen() });
-            await recordMoveToDB(g, { san: move.san, from, to });
+            // await recordMoveToDB(g, { san: move.san, from, to });
+            await recordMoveToDB(g, { san: move.san, from, to, captured: move.captured || null });
 
             io.to(g.id).emit("game:move", {
-                san: move.san, from, to, fen: g.chess.fen(), moveNo: g.moves.length, clocks: g.clocks
+                // san: move.san, from, to, fen: g.chess.fen(), moveNo: g.moves.length, clocks: g.clocks
+                san: move.san,
+                from, to,
+                fen: g.chess.fen(),
+                moveNo: g.moves.length,
+                clocks: g.clocks,
+                captured: move.captured || null,
+                captures: g.captures, // <- echo updated trays for snappy UI
             });
 
             if (g.chess.isCheckmate()) return endGame(io, g, side === "w" ? "WHITE_WIN" : "BLACK_WIN", "Checkmate");
@@ -173,6 +201,7 @@ function emitState(io, g) {
         turn: g.chess.turn(),
         clocks: g.clocks,
         status: g.status,
+        captures: g.captures, // <- send trays
     });
 }
 
