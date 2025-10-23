@@ -360,7 +360,8 @@ export default function ChessGame() {
           {/* LEFT: Board card */}
           <div className="relative">
             <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-amber-400 blur opacity-50" />
-            <div className="relative rounded-2xl bg-zinc-900/70 ring-1 ring-white/10 backdrop-blur-xl p-4 md:p-6">
+            {/* IMPORTANT: NO transform/filter/backdrop-filter on this container */}
+            <div className="relative rounded-2xl bg-zinc-900/90 ring-1 ring-white/10 p-4 md:p-6">
               <div className={`mb-3 text-center text-base md:text-lg font-semibold ${status === "active" && chess.inCheck() ? "text-rose-400" : "text-zinc-200"}`}>
                 {statusText}
               </div>
