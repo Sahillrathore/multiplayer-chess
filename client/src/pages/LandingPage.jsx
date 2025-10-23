@@ -1,18 +1,81 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
+// src/Landing.jsx
+import React from "react";
+import {Link} from "react-router-dom";
 
-const LandingPage = () => {
+export default function Landing() {
     return (
-        <div>
-            <h1 className='text-3xl font-bold'>Welcom to Chess.Xyz</h1>
-
-            <div className="flex justify-center items-center">
-                <Link to="play">
-                    <button className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Play Now</button>
-                </Link>
+        <div className="min-h-screen bg-black text-white relative overflow-hidden">
+            {/* Subtle background word / blob */}
+            <div className="pointer-events-none absolute inset-0 opacity-10">
+                <div className="absolute -top-16 -right-20 h-[46rem] w-[46rem] rounded-full
+                        bg-gradient-to-br from-zinc-700 via-zinc-800 to-black blur-3xl" />
+                <div className="absolute -bottom-20 -left-32 h-[40rem] w-[40rem] rounded-full
+                        bg-gradient-to-br from-zinc-800 via-black to-black blur-3xl" />
             </div>
-        </div>
-    )
-}
 
-export default LandingPage
+            {/* Top nav */}
+            <header className="relative z-10">
+                <div className="mx-auto max-w-6xl px-5 py-6 flex items-center justify-between">
+                    <div className="text-xl tracking-[0.35em] font-semibold">CHESS</div>
+
+                    <nav className="hidden md:flex items-center gap-7 text-sm text-zinc-300">
+                        <a className="hover:text-white transition" href="#">Puzzles</a>
+                        <a className="hover:text-white transition" href="#">Learn</a>
+                        <a className="hover:text-white transition" href="#">Watch</a>
+                        <a className="hover:text-white transition" href="#">News</a>
+                        <a className="hover:text-white transition" href="#">Social</a>
+                        <a className="hover:text-white transition" href="#">More</a>
+                    </nav>
+
+                    <div className="flex items-center gap-3">
+                        <button className="hidden sm:inline-block px-4 py-2 rounded-full text-sm font-medium border border-white/15 hover:bg-white/5">
+                            Login
+                        </button>
+                        <button className="px-4 py-2 rounded-full text-sm font-semibold bg-white text-black hover:bg-white/90">
+                            Sign In
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            {/* Hero */}
+            <main className="relative z-10 pt-10">
+                <div className="mx-auto max-w-full px-5 pt-6 pb-24 flex flex-col gap-12 justify-center items-center">
+                    {/* Left copy */}
+                    <div className="max-w-xl flex items-center flex-col text-center">
+                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
+                            Play Chess Online
+                            <br />
+                            on the <span className="whitespace-nowrap">#1 Site!</span>
+                        </h1>
+
+                        <div className="mt-6 flex flex-wrap items-center gap-x-10 gap-y-2 text-zinc-300">
+                            <div className="text-sm">
+                                <span className="font-semibold text-white">18,123,165+</span>{" "}
+                                Games Today
+                            </div>
+                            <div className="text-sm">
+                                <span className="font-semibold text-white">301,512</span>{" "}
+                                Playing Now
+                            </div>
+                        </div>
+
+                        <div className="mt-7 flex items-center gap-3">
+                            <Link to='/play' className="px-5 py-2.5 rounded-full text-sm font-semibold bg-white text-black hover:bg-white/90 shadow">
+                                ▶ Play Online
+                            </Link>
+                            <button className="px-5 py-2.5 rounded-full text-sm font-semibold bg-zinc-900 border border-white/10 hover:bg-zinc-800">
+                                🤖 Play Bots
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Right image */}
+                    <div className="w-[60rem] relative -top-10">
+                        <img src="/chess.png" className="h-full w-full" />
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
+}
