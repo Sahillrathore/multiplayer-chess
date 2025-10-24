@@ -4,7 +4,7 @@ import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import { io } from "socket.io-client";
 import { FiPlusSquare, FiGrid, FiUsers, FiChevronDown, FiClock } from "react-icons/fi";
-
+import GameReview from "./components/GameReview";
 // ---- CONFIG
 const API_BASE = "http://localhost:4000";
 // const timeControl = "120+0"; // OLD: not used anymore (we build it from selected dropdown)
@@ -47,6 +47,7 @@ export default function ChessGame() {
   const [loadingGames, setLoadingGames] = useState(false);
   const [gamesErr, setGamesErr] = useState("");
   const [captures, setCaptures] = useState({ w: [], b: [] }); // <- trays
+  const [selectedGame, setSelectedGame] = useState(null);
 
   // client-side ticking base
   const syncRef = useRef({ base: { w: 300000, b: 300000 }, turn: "w", ts: Date.now(), status: "idle" });
@@ -375,17 +376,31 @@ export default function ChessGame() {
                 ))}
               </div>
 
-              <Chessboard
-                position={fen}
-                onPieceDrop={onDrop}
-                arePiecesDraggable={isAuthed && status === "active" && color === turn}
-                boardOrientation={color === "b" ? "black" : "white"}
-                animationDuration={200}
-                customBoardStyle={{ borderRadius: "10px", boxShadow: "0 10px 30px rgba(0,0,0,.35)" }}
-                // chess.com-like colors
-                customDarkSquareStyle={{ backgroundColor: "#769656" }}
-                customLightSquareStyle={{ backgroundColor: "#eeeed2" }}
-              />
+              {
+                !selectedGame ?
+                  <Chessboard
+                    position={fen}
+                    onPieceDrop={onDrop}
+                    arePiecesDraggable={isAuthed && status === "active" && color === turn}
+                    boardOrientation={color === "b" ? "black" : "white"}
+                    animationDuration={200}
+                    customBoardStyle={{ borderRadius: "10px", boxShadow: "0 10px 30px rgba(0,0,0,.35)" }}
+                    // chess.com-like colors
+                    customDarkSquareStyle={{ backgroundColor: "#769656" }}
+                    customLightSquareStyle={{ backgroundColor: "#eeeed2" }}
+                  />
+                  
+                  :
+
+                  <div className="mt-4">
+                    <GameReview
+                      apiBase={API_BASE}
+                      token={token}
+                      gameMeta={selectedGame}
+                      onClose={() => setSelectedGame(null)}
+                    />
+                  </div>
+              }
 
               {/* Captured by You (pieces you have taken from opponent) */}
               <div className="mt-2 flex flex-wrap items-center gap-1 text-xl">
@@ -599,10 +614,10 @@ export default function ChessGame() {
                                 {g.opponent?.name || "Opponent"} · {g.result || "—"} · {(g.timeControl || "").toString()}
                               </div>
                               <button
-                                onClick={() => previewGame(g)}
+                                onClick={() => setSelectedGame(g)}
                                 className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/15"
                               >
-                                Load on board
+                                Review
                               </button>
                             </div>
                             {g.startedAt && (
