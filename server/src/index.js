@@ -6,6 +6,7 @@ const passport = require("./auth/google"); // initialize strategy
 const { connectDB } = require("./db");
 const { PORT, ORIGINS } = require("./config");
 const authRoutes = require("./auth/auth.routes");
+const gamesRoutes = require("./routes/games.routes");
 const { attachSocketServer } = require("./game/sockets");
 
 (async () => {
@@ -16,6 +17,7 @@ const { attachSocketServer } = require("./game/sockets");
   app.use(cookieParser());
   app.get("/health", (_req, res) => res.json({ ok: true }));
   app.use("/auth", authRoutes);
+  app.use("/games", gamesRoutes);
 
   const server = http.createServer(app);
   attachSocketServer(server);
