@@ -31,6 +31,7 @@ app.use(express.json());
 
 // Routes
 app.get("/health", (_req, res) => res.json({ ok: true }));
+app.get("/test", (_req, res) => res.json({ message: "API is working" }));
 app.use("/auth", authRoutes);
 app.use("/games", gamesRoutes);
 
