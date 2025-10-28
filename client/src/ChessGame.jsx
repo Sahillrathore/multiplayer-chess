@@ -6,7 +6,7 @@ import { io } from "socket.io-client";
 import { FiPlusSquare, FiGrid, FiUsers, FiChevronDown, FiClock } from "react-icons/fi";
 import GameReview from "./components/GameReview";
 // ---- CONFIG
-const API_BASE = "http://localhost:4000";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 // const timeControl = "120+0"; // OLD: not used anymore (we build it from selected dropdown)
 
 function getToken() {
