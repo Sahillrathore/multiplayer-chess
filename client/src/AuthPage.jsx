@@ -5,7 +5,7 @@ import { PiCrownBold, PiLockFill, PiShieldCheckFill } from "react-icons/pi";
 import { FiArrowRight, FiChevronLeft, FiMail, FiKey } from "react-icons/fi";
 
 // ====== CONFIG ======
-const API_BASE = "http://localhost:4000"; // adjust if your FE origin/port differs
+const API_BASE = import.meta.env.VITE_API_BASE; // adjust if your FE origin/port differs
 
 function storeToken(token) {
     localStorage.setItem("token", token);
