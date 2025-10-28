@@ -19,7 +19,7 @@ router.get("/google/callback",
   passport.authenticate("google", { session: false, failureRedirect: "/auth/google/fail" }),
   (req, res) => {
     const token = sign({ sub: req.user.id });
-    const redirect = new URL("http://localhost:5173/auth/callback"); // change for your FE
+    const redirect = new URL(`${process.env.FRONTEND_URL}/auth/callback`); // change for your FE
     res.redirect(`${redirect.toString()}#token=${token}`);
   }
 );
