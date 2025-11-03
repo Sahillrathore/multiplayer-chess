@@ -62,6 +62,8 @@ function attachSocketServer(httpServer) {
         }
 
         socket.on("queue:join", async ({ timeControl }) => {
+            console.log('join req');
+            
             if (!timeControl) return socket.emit("error", { code: "BAD_PAYLOAD", message: "timeControl required" });
 
             enqueue(timeControl, { socketId: socket.id, userId: socket.userId, userDbId: socket.userDbId, timeControl });
