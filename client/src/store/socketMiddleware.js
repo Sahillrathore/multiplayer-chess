@@ -55,7 +55,7 @@ function connect(store, token) {
 
   socket.on('game:move', (payload) => {
     // payload should include: { fen, clocks, captures }
-    // console.log('[socket] event game:move', payload);
+    console.log('[socket] event game:move', payload);
     store.dispatch(applyMove(payload));
   });
 
