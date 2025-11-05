@@ -5,7 +5,7 @@ import { Chess } from "chess.js";
 
 const pad2 = (n) => (n < 10 ? "0"+n : ""+n);
 
-export default function GameReview({ apiBase, token, gameMeta, onClose }) {
+export default function GameReview({ token, gameMeta, onClose }) {
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState(null);
   const [moveIndex, setMoveIndex] = useState(-1); // -1 = start position
@@ -17,7 +17,7 @@ export default function GameReview({ apiBase, token, gameMeta, onClose }) {
     async function run() {
       setLoading(true);
       try {
-        const res = await fetch(`${apiBase}/games/${gameMeta._id}`, {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE}/games/${gameMeta._id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -31,7 +31,7 @@ export default function GameReview({ apiBase, token, gameMeta, onClose }) {
     }
     run();
     return () => { abort = true; };
-  }, [apiBase, token, gameMeta]);
+  }, [token, gameMeta]);
 
   // figure current FEN
   const fen = useMemo(() => {

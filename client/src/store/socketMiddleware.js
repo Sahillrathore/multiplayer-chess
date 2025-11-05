@@ -1,7 +1,7 @@
 // src/store/socketMiddleware.js
 import { io } from 'socket.io-client';
 import {
-  setConnected, queueMatched, resumeGame, syncState, applyMove, endGame
+  setConnected, queueMatched, queueStop, resumeGame, syncState, applyMove, endGame
 } from './slices/gameSlice';
 
 let socket = null;
@@ -57,6 +57,12 @@ function connect(store, token) {
     // payload should include: { fen, clocks, captures }
     // console.log('[socket] event game:move', payload);
     store.dispatch(applyMove(payload));
+  });
+
+  socket.on('queue:error', (payload) => {
+    console.warn('[socket] queue:error', payload);
+    store.dispatch(queueStop());
+    // optionally show a toast: payload.message
   });
 
   socket.on('game:ended', (payload) => {
