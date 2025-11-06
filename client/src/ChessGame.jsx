@@ -1,10 +1,13 @@
-// ChessGame.jsx
 import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
-import { FiPlusSquare, FiGrid, FiUsers, FiChevronDown, FiClock } from 'react-icons/fi';
+import { FaRegSquarePlus } from "react-icons/fa6";
+import { BiSolidChess } from "react-icons/bi";
+
 import GameReview from './components/GameReview';
+import Sidebar from './components/Sidebar';
+import PromotionPrompt from './components/PromotionPrompt';
 
 import { setTimeControl, setSidebarTab, setReviewing, queueStart, queueStop } from '../src/store/slices/gameSlice';
 
@@ -16,6 +19,7 @@ import {
 } from '../src/store/socketActions';
 import useRealtimeClocks from '../src/hooks/useRealtimeClocks';
 import { logout as logoutAction } from '../src/store/slices/authSlice';
+import TimeControlSelect from './components/TimeControlSelect';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
 
@@ -46,39 +50,54 @@ export default function ChessGame() {
   const { token, user } = useSelector((s) => s.auth);
   const isAuthed = !!token;
 
-  // local: history & selected review meta
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState(null);
   const [selectedGameMeta, setSelectedGameMeta] = useState(null);
 
-  // local: override fen when user seeks a past move
+  // promotion flow
+  const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to, color }
+  // override fen when seeking
   const [overrideFen, setOverrideFen] = useState(null);
-  // track currently selected moveIndex (-1 means start position)
   const [selectedMoveIndex, setSelectedMoveIndex] = useState(-1);
-
-  // keep previous moves length to detect new incoming move and reset override
   const prevMovesLenRef = useRef((moves && moves.length) || 0);
+  const prevSelectedMoveIndexRef = useRef(selectedMoveIndex);
 
-  // live display clocks derived from server bases (should return { w: ms, b: ms })
+  // responsive board width
+  const [boardWidth, setBoardWidth] = useState(520);
+
+  // sounds (refs to Audio objects)
+  const moveSoundRef = useRef(null);
+  const captureSoundRef = useRef(null);
+  const checkSoundRef = useRef(null);
+  const rewindSoundRef = useRef(null);
+  const gameEndSoundRef = useRef(null);
+
   const displayClocks = useRealtimeClocks();
-
   const timeControlStr = useMemo(() => `${tcSeconds}+0`, [tcSeconds]);
   const chess = useMemo(() => new Chess(fen === 'start' ? undefined : fen), [fen]);
 
-  // Build move rows for display: each row contains moveNo, whiteSan, blackSan, whiteFen, blackFen
+  // Build move rows for display and also include glyphs where possible
   const moveRows = useMemo(() => {
     const arr = moves || [];
     const rows = [];
     for (let i = 0; i < arr.length; i += 2) {
+      const w = arr[i] || null;
+      const b = arr[i + 1] || null;
+
+      const wGlyph = w ? (w.piece ? glyph(w.piece, w.color) : '') : '';
+      const bGlyph = b ? (b.piece ? glyph(b.piece, b.color) : '') : '';
+
       rows.push({
         moveNo: Math.floor(i / 2) + 1,
-        white: arr[i] ? (arr[i].san || '') : '',
-        whiteFen: arr[i] ? arr[i].fen || null : null,
-        black: arr[i + 1] ? (arr[i + 1].san || '') : '',
-        blackFen: arr[i + 1] ? arr[i + 1].fen || null : null,
+        white: w ? (w.san || '') : '',
+        whiteFen: w ? w.fen || null : null,
+        black: b ? (b.san || '') : '',
+        blackFen: b ? b.fen || null : null,
         whiteIndex: i,
         blackIndex: i + 1,
+        whiteGlyph: wGlyph,
+        blackGlyph: bGlyph,
       });
     }
     return rows;
@@ -96,25 +115,75 @@ export default function ChessGame() {
     return `${turn === 'w' ? 'White' : 'Black'} to move`;
   }, [isAuthed, status, turn]);
 
+  // ------------------ Sound setup ------------------
+  useEffect(() => {
+    // Provide paths to your sound files in public/sounds/
+    // Update these paths if you place sounds elsewhere.
+    const base = '/sounds';
+    moveSoundRef.current = new Audio(`${base}/move.mp3`);
+    captureSoundRef.current = new Audio(`${base}/capture.mp3`);
+    checkSoundRef.current = new Audio(`${base}/check.mp3`);
+    rewindSoundRef.current = new Audio(`${base}/move.mp3`);
+    gameEndSoundRef.current = new Audio(`${base}/gameend.mp3`);
+
+    // Preload
+    [moveSoundRef, captureSoundRef, checkSoundRef, rewindSoundRef, gameEndSoundRef].forEach(r => {
+      try { if (r.current) r.current.preload = 'auto'; } catch(e) {}
+    });
+  }, []);
+
+  // ------------------ Responsive board width ------------------
+  useEffect(() => {
+    const compute = () => {
+      const w = Math.min(600, Math.max(360, Math.floor(window.innerWidth * 0.45)));
+      setBoardWidth(w);
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    return () => window.removeEventListener('resize', compute);
+  }, []);
+
   // Reset overrideFen when new move arrives (so board follows live)
   useEffect(() => {
     const prevLen = prevMovesLenRef.current;
     const curLen = (moves && moves.length) || 0;
+
+    // when a new move is received from server (live play)
     if (curLen > prevLen) {
-      // new move pushed -> clear any override and selection
+      // play sounds for the incoming move (determine capture/check)
+      const last = moves[curLen - 1];
+      if (last) {
+        // capture
+        if (last.captured) {
+          try { captureSoundRef.current?.play(); } catch (e) {}
+        } else {
+          try { moveSoundRef.current?.play(); } catch (e) {}
+        }
+        // check: create a chess position from the move's fen (if available)
+        if (last.fen) {
+          try {
+            const c = new Chess(last.fen);
+            // After a move, the side to move is the side NOT just moved.
+            // If that side is in check -> the previous move gave check.
+            if (c.in_check()) {
+              try { checkSoundRef.current?.play(); } catch (e) {}
+            }
+          } catch (e) { /* ignore */ }
+        }
+      }
+
       setOverrideFen(null);
       setSelectedMoveIndex(-1);
     }
+
     prevMovesLenRef.current = curLen;
   }, [moves]);
 
   // fetch history when games tab opens
   useEffect(() => {
     if (sidebarTab !== 'games' || !isAuthed) return;
-
     let abort = false;
     const ctrl = new AbortController();
-
     async function load() {
       setHistoryLoading(true);
       setHistoryError(null);
@@ -133,12 +202,10 @@ export default function ChessGame() {
         if (!abort) setHistoryLoading(false);
       }
     }
-
     load();
     return () => { abort = true; ctrl.abort(); };
   }, [sidebarTab, isAuthed, token]);
 
-  // send join queue
   const isQueueing = useSelector((s) => s.game.queueing);
 
   const findMatch = () => {
@@ -157,39 +224,80 @@ export default function ChessGame() {
   const resign = () => gameId && dispatch(socketResign({ gameId }));
   const logout = () => dispatch(logoutAction());
 
+  /**
+   * Helper: check if a move from->to is a promotion (based on current fen)
+   * returns array of possible promotions (['q','r','b','n']) or [].
+   */
+  const availablePromotionsForMove = useCallback((from, to, fenPosition) => {
+    try {
+      const t = new Chess(fenPosition === 'start' ? undefined : fenPosition);
+      const legal = t.moves({ verbose: true });
+      const matches = legal.filter(m => m.from === from && m.to === to && m.promotion);
+      if (matches.length > 0) {
+        return ['q', 'r', 'b', 'n'];
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }, []);
+
+  // onPieceDrop callback for react-chessboard:
   const onDrop = useCallback(
     (from, to) => {
       if (status !== 'active' || !gameId) return false;
       if (color !== turn) return false;
+
       const test = new Chess(fen === 'start' ? undefined : fen);
+      const promotions = availablePromotionsForMove(from, to, fen);
+      if (promotions.length > 0) {
+        // open our custom UI and DO NOT let the board perform its promotion
+        setPendingPromotion({ from, to, color });
+        return false; // important: stop the board's default handling
+      }
+
+      // normal move path
       const mv = test.move({ from, to, promotion: 'q' });
       if (!mv) return false;
       dispatch(socketSendMove({ gameId, from, to, promotion: mv.promotion || 'q' }));
       return true;
     },
-    [status, gameId, color, turn, fen, dispatch]
+    [status, gameId, color, turn, fen, dispatch, availablePromotionsForMove]
   );
 
-  // move seek handlers
-  const seekToMoveIndex = (idx) => {
+  // when user chooses promotion from our prompt
+  const handlePromotionChoose = (prom) => {
+    if (!pendingPromotion) return;
+    const { from, to } = pendingPromotion;
+    dispatch(socketSendMove({ gameId, from, to, promotion: prom || 'q' }));
+    setPendingPromotion(null);
+  };
+  const handlePromotionCancel = () => {
+    setPendingPromotion(null);
+  };
+
+  // ------------------ Seek / rewind sound ------------------
+  function seekToMoveIndex(idx) {
+    // play rewind sound when user moves to a previous or different move
+    try { rewindSoundRef.current?.play(); } catch (e) {}
+
     if (idx < 0) {
       setOverrideFen(null);
       setSelectedMoveIndex(-1);
+      prevSelectedMoveIndexRef.current = -1;
       return;
     }
     const m = (moves && moves[idx]) || null;
     if (m && m.fen) {
       setOverrideFen(m.fen);
       setSelectedMoveIndex(idx);
+      prevSelectedMoveIndexRef.current = idx;
     } else {
-      // if fen is not available, attempt to compute fen client-side (less reliable)
-      // compute from starting FEN by replaying moves up to idx
       try {
         const c = new Chess();
         for (let i = 0; i <= idx; i++) {
           const mv = moves[i];
           if (!mv) break;
-          // we expect moves to contain from/to/promotion
           if (mv.from && mv.to) {
             c.move({ from: mv.from, to: mv.to, promotion: mv.promotion || 'q' });
           } else if (mv.san) {
@@ -198,14 +306,13 @@ export default function ChessGame() {
         }
         setOverrideFen(c.fen());
         setSelectedMoveIndex(idx);
+        prevSelectedMoveIndexRef.current = idx;
       } catch (e) {
-        // fallback: do nothing
         console.warn('seek compute failed', e);
       }
     }
-  };
+  }
 
-  // review open/close handlers
   const openReviewOnBoard = (gameMeta) => {
     setSelectedGameMeta(gameMeta);
     dispatch(setReviewing(true));
@@ -216,21 +323,65 @@ export default function ChessGame() {
     dispatch(setReviewing(false));
   };
 
-  // position shown on board: overrideFen if set else live fen
+  // ------------------ last move highlighting ------------------
   const shownPosition = overrideFen ?? fen;
+  const lastMove = useMemo(() => {
+    if (selectedMoveIndex >= 0) return moves && moves[selectedMoveIndex] ? moves[selectedMoveIndex] : null;
+    if (!moves || moves.length === 0) return null;
+    return moves[moves.length - 1];
+  }, [moves, selectedMoveIndex]);
+
+  const customSquareStyles = useMemo(() => {
+    const styles = {};
+    if (lastMove && lastMove.from) {
+      styles[lastMove.from] = {
+        background:
+          'linear-gradient(90deg, rgba(16,185,129,0.18), rgba(16,185,129,0.08))',
+        boxShadow: 'inset 0 0 0 3px rgba(16,185,129,0.08)',
+      };
+    }
+    if (lastMove && lastMove.to) {
+      styles[lastMove.to] = {
+        background:
+          'linear-gradient(90deg, rgba(34,211,238,0.16), rgba(34,211,238,0.06))',
+        boxShadow: 'inset 0 0 0 3px rgba(34,211,238,0.06)',
+      };
+    }
+    return styles;
+  }, [lastMove]);
+
+  // ------------------ Game end modal ------------------
+  const [showGameEndModal, setShowGameEndModal] = useState(false);
+  const [gameEndMessage, setGameEndMessage] = useState('Game Over');
+
+  // open game end modal when status transitions to 'ended'
+  const prevStatusRef = useRef(status);
+  useEffect(() => {
+    if (prevStatusRef.current !== 'ended' && status === 'ended') {
+      // build a friendly message if possible (you can enhance by using game meta)
+      const last = moves && moves.length ? moves[moves.length - 1] : null;
+      const msg = 'Game Over';
+      setGameEndMessage(msg);
+      setShowGameEndModal(true);
+      try { gameEndSoundRef.current?.play(); } catch (e) {}
+    }
+    prevStatusRef.current = status;
+  }, [status, moves]);
+
+  // close modal
+  const closeGameEndModal = () => setShowGameEndModal(false);
 
   return (
     <div className="min-h-screen w-full bg-zinc-950 text-zinc-100 relative overflow-hidden">
-      <div className="mx-auto max-w-6xl px-4 py-6 md:py-10">
+      <div className="mx-auto max-w-6xl px-4 py-6 md:py-5">
         <div className="grid gap-12 md:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)]">
           {/* LEFT: board */}
           <div className="relative">
-            <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-amber-400 blur opacity-50" />
-            <div className="relative rounded-2xl bg-zinc-900/90 ring-1 ring-white/10 p-4 md:p-6">
-              {/* header row */}
+            <div className="absolute -inset-0.5 rounded-md bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-amber-400 blur opacity-50" />
+            <div className="relative rounded-md bg-zinc-900/90 ring-1 ring-white/10 p-4 md:p-6">
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-sm font-semibold">O</div>
+                  <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-base uppercase font-semibold">{opponentEmail?.slice(0, 1) || "O"}</div>
                   <div className="text-sm font-semibold">{opponentEmail || 'Opponent'}</div>
                 </div>
                 <div className="text-sm text-zinc-300">{statusText}</div>
@@ -258,6 +409,8 @@ export default function ChessGame() {
                     customBoardStyle={{ borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,.35)' }}
                     customDarkSquareStyle={{ backgroundColor: '#769656' }}
                     customLightSquareStyle={{ backgroundColor: '#eeeed2' }}
+                    customSquareStyles={customSquareStyles}
+                    boardWidth={boardWidth}
                   />
 
                   <div className="mt-2 flex flex-wrap items-center gap-1 text-xl">
@@ -281,112 +434,30 @@ export default function ChessGame() {
             </div>
           </div>
 
-          {/* RIGHT: Moves list + controls + history */}
-          <div className="space-y-4">
-            {/* controls panel */}
-            <div className="rounded-2xl bg-[#1f1f1f] ring-1 ring-white/10 p-3">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <button onClick={() => dispatch(setSidebarTab('new'))} className="px-2 py-1 rounded bg-white/5 text-xs">New</button>
-                  <button onClick={() => dispatch(setSidebarTab('games'))} className="px-2 py-1 rounded bg-white/5 text-xs">Games</button>
-                </div>
-                <div className="text-xs text-zinc-400">{isAuthed ? (connected ? 'Connected' : 'Connecting…') : 'Not signed in'}</div>
-              </div>
-
-              {/* Time control + Start */}
-              <div className="mb-3">
-                <div className="flex items-center gap-2">
-                  <select value={tcSeconds} onChange={(e) => dispatch(setTimeControl(Number(e.target.value)))} className="rounded-xl border border-white/10 bg-black px-2 py-1 text-xs">
-                    <option value={60}>1 min</option>
-                    <option value={180}>3 min</option>
-                    <option value={300}>5 min</option>
-                    <option value={600}>10 min</option>
-                  </select>
-                  <button onClick={findMatch} disabled={!isAuthed || status === 'active' || isQueueing} className="rounded-xl px-3 py-1 bg-emerald-600 text-xs disabled:opacity-60">Start Game</button>
-                  {isQueueing && <button onClick={cancelQueue} className="rounded-xl px-3 py-1 bg-rose-600 text-xs">Cancel</button>}
-                </div>
-              </div>
-
-              {/* Moves list */}
-              <div className="rounded-xl bg-zinc-900/70 p-3 ring-1 ring-white/5 max-h-[48vh] overflow-auto">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-semibold text-zinc-200">Moves</div>
-                  <div className="text-xs text-zinc-400">Moves: {(moves && moves.length) || 0}</div>
-                </div>
-
-                <ol className="text-sm leading-6 space-y-1">
-                  {moveRows.length === 0 && <li className="text-xs text-zinc-400">No moves yet</li>}
-                  {moveRows.map((r) => (
-                    <li key={r.moveNo} className="grid grid-cols-[40px_1fr_1fr] gap-2 items-center">
-                      {/* move number: click to go to start of that move (white's start) */}
-                      <button
-                        onClick={() => seekToMoveIndex(r.whiteIndex)}
-                        className={`text-left text-xs px-2 py-1 rounded ${selectedMoveIndex === r.whiteIndex || selectedMoveIndex === r.blackIndex ? 'bg-emerald-500/20 text-emerald-300' : 'text-zinc-300 hover:bg-white/5'}`}
-                        title={`Go to move ${r.moveNo}`}
-                      >
-                        {r.moveNo}.
-                      </button>
-
-                      {/* white move */}
-                      <button
-                        onClick={() => seekToMoveIndex(r.whiteIndex)}
-                        className={`text-left text-xs px-2 py-1 rounded ${selectedMoveIndex === r.whiteIndex ? 'bg-emerald-500/20 text-emerald-300' : 'text-zinc-300 hover:bg-white/5'}`}
-                        title={r.white}
-                      >
-                        {r.white || '—'}
-                      </button>
-
-                      {/* black move */}
-                      <button
-                        onClick={() => seekToMoveIndex(r.blackIndex)}
-                        className={`text-left text-xs px-2 py-1 rounded ${selectedMoveIndex === r.blackIndex ? 'bg-emerald-500/20 text-emerald-300' : 'text-zinc-300 hover:bg-white/5'}`}
-                        title={r.black}
-                      >
-                        {r.black || '—'}
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-
-                {/* "Back to live" quick button */}
-                <div className="mt-3 text-right">
-                  <button onClick={() => seekToMoveIndex(-1)} className="text-xs px-2 py-1 rounded bg-white/5">Back to live</button>
-                </div>
-              </div>
-            </div>
-
-            {/* History / Games panel (kept minimal) */}
-            <div className="relative rounded-2xl bg-zinc-900/70 ring-1 ring-white/10 backdrop-blur-xl p-4">
-              <h2 className="mb-2 text-sm font-semibold text-zinc-200">Your Games</h2>
-              {historyLoading && <div className="text-xs text-zinc-400">Loading…</div>}
-              {historyError && <div className="text-xs text-rose-400">Error: {historyError}</div>}
-              <div className="space-y-2 max-h-36 overflow-auto">
-                {history.length === 0 && !historyLoading && <div className="text-xs text-zinc-400">No games yet.</div>}
-                {history.map((g) => (
-                  <div key={g._id} className="flex items-center justify-between gap-2 rounded-md bg-white/2 p-2">
-                    <div className="text-xs text-zinc-200">
-                      <div className="font-semibold">{g.timeControl}</div>
-                      <div className="text-zinc-400 text-[11px]">{new Date(g.startedAt).toLocaleString()}</div>
-                      <div className="text-zinc-400 text-[11px]">Result: {g.result || '—'}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => openReviewOnBoard(g)} className="rounded-md px-3 py-1 text-xs bg-indigo-600/70 font-semibold">Review</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {reviewing && (
-                <div className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-300">
-                  Viewing a past game (review mode). Close the review to return to live play.
-                </div>
-              )}
-            </div>
-          </div>
+          {/* RIGHT: Sidebar component */}
+          <Sidebar
+            tcSeconds={tcSeconds}
+            isAuthed={isAuthed}
+            status={status}
+            isQueueing={isQueueing}
+            findMatch={findMatch}
+            cancelQueue={cancelQueue}
+            moveRows={moveRows}
+            movesCount={(moves && moves.length) || 0}
+            selectedMoveIndex={selectedMoveIndex}
+            seekToMoveIndex={seekToMoveIndex}
+            history={history}
+            historyLoading={historyLoading}
+            historyError={historyError}
+            openReviewOnBoard={openReviewOnBoard}
+            reviewing={reviewing}
+            gameId={gameId}
+            offerDraw={offerDraw}
+            resign={resign}
+          />
         </div>
       </div>
 
-      {/* Queue / Matching Modal */}
       {isQueueing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-md rounded-2xl bg-zinc-900/95 ring-1 ring-white/10 p-6 text-center">
@@ -394,6 +465,27 @@ export default function ChessGame() {
             <div className="text-sm text-zinc-400 mb-6">We're matching you with an opponent for <span className="font-semibold">{timeControlStr}</span>.</div>
             <div className="flex items-center justify-center gap-3">
               <button onClick={cancelQueue} className="rounded-xl px-4 py-2 bg-rose-500 hover:bg-rose-500/90 font-semibold">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* promotion prompt overlay */}
+      <PromotionPrompt
+        visible={!!pendingPromotion}
+        color={pendingPromotion?.color || 'w'}
+        onChoose={handlePromotionChoose}
+        onCancel={handlePromotionCancel}
+      />
+
+      {/* Game end modal */}
+      {showGameEndModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-zinc-900/95 ring-1 ring-white/10 p-6 text-center">
+            <h3 className="text-lg font-bold mb-2">{gameEndMessage}</h3>
+            <p className="text-sm text-zinc-300 mb-4">The game has ended.</p>
+            <div className="flex justify-center gap-3">
+              <button onClick={closeGameEndModal} className="rounded-xl px-4 py-2 bg-emerald-600 hover:bg-emerald-500 font-semibold">Close</button>
             </div>
           </div>
         </div>

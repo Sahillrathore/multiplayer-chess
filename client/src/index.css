@@ -8,3 +8,49 @@
     background: rgba(255,255,255,0.06); padding: .35rem .6rem; font-size: .8rem; color: #fff;
   }
   .btn-mini:hover { background: rgba(255,255,255,0.10); }
+
+  /* === Custom Scrollbar (Dark Theme) === */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px; /* for horizontal scrollbars */
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a; /* dark background */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #4ade80, #059669); /* emerald gradient */
+  border-radius: 10px;
+  border: 2px solid #1a1a1a; /* creates a gap between thumb and track */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #22c55e, #047857);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #8c8c8c #1a1a1a;
+}
+
+/* Hide built-in promotion popups from chessboard libraries so our custom prompt is the only UI */
+.promotion,
+.promotion-popup,
+.promotion-container,
+.chessboard-promotion,
+.react-chessboard__promotion,
+.rcw-promotion,
+.promotionPieces,
+.promotion-box {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}

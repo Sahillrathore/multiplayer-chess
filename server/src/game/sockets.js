@@ -245,6 +245,8 @@ function attachSocketServer(httpServer) {
 
         socket.on("game:offerDraw", ({ gameId }) => {
             const g = games.get(gameId);
+            console.log(g);
+            
             if (!g || g.status !== "active") return;
             const side = socket.id === g.white.socketId ? "w" : socket.id === g.black.socketId ? "b" : null;
             if (!side) return;
