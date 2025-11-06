@@ -167,7 +167,7 @@ export default function ChessGame() {
             if (c.in_check()) {
               try { checkSoundRef.current?.play(); } catch (e) {}
             }
-          } catch (e) { /* ignore */ }
+          } catch (e) { console.log(e) }
         }
       }
 
