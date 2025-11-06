@@ -117,8 +117,7 @@ export default function ChessGame() {
 
   // ------------------ Sound setup ------------------
   useEffect(() => {
-    // Provide paths to your sound files in public/sounds/
-    // Update these paths if you place sounds elsewhere.
+   
     const base = '/sounds';
     moveSoundRef.current = new Audio(`${base}/move.mp3`);
     captureSoundRef.current = new Audio(`${base}/capture.mp3`);
