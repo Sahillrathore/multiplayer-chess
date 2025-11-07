@@ -20,7 +20,7 @@ export default function Landing() {
     const isAuthed = !!token;
     const email = user?.email;
     console.log(user);
-    
+
     const handlePlay = () => {
         if (isAuthed) navigate("/play");
         else navigate("/login");
@@ -72,11 +72,11 @@ export default function Landing() {
                         ) : (
                             <div className="flex items-center gap-3">
                                 {/* small email pill */}
-                                <div className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs text-zinc-200">
+                                {/* <div className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs text-zinc-200">
                                     <span className="font-medium">{shortEmail(email)}</span>
                                     <span className="text-zinc-400">·</span>
                                     <span className="text-zinc-400 text-[11px]">signed in</span>
-                                </div>
+                                </div> */}
 
                                 <button
                                     onClick={handleLogout}
@@ -137,6 +137,57 @@ export default function Landing() {
                     </div>
                 </div>
             </main>
+
+            <header className="relative z-10">
+                <div className="mx-auto max-w-7xl px-5 py-6 flex items-center justify-between">
+                    <div className="text-xl tracking-[0.35em] font-semibold">CHESS</div>
+
+                    <nav className="hidden md:flex items-center gap-7 text-sm text-zinc-300">
+                        <a className="hover:text-white transition" href="#">Puzzles</a>
+                        <a className="hover:text-white transition" href="#">Learn</a>
+                        <a className="hover:text-white transition" href="#">Watch</a>
+                        <a className="hover:text-white transition" href="#">News</a>
+                        <a className="hover:text-white transition" href="#">Social</a>
+                        <a className="hover:text-white transition" href="#">More</a>
+                    </nav>
+
+                    <div className="flex items-center gap-3">
+                        {!isAuthed ? (
+                            <>
+                                <Link
+                                    to="/login"
+                                    className="hidden sm:inline-block px-4 py-2 rounded-full text-sm font-medium border border-white/15 hover:bg-white/5"
+                                >
+                                    Login
+                                </Link>
+                                <Link
+                                    to="/login"
+                                    className="px-4 py-2 rounded-full text-sm font-semibold bg-white text-black hover:bg-white/90"
+                                >
+                                    Sign In
+                                </Link>
+                            </>
+                        ) : (
+                            <div className="flex items-center gap-3">
+                                {/* small email pill */}
+                                {/* <div className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs text-zinc-200">
+                                    <span className="font-medium">{shortEmail(email)}</span>
+                                    <span className="text-zinc-400">·</span>
+                                    <span className="text-zinc-400 text-[11px]">signed in</span>
+                                </div> */}
+
+                                <button
+                                    onClick={handleLogout}
+                                    className="px-4 py-2 rounded-full text-sm font-semibold bg-white text-black hover:bg-white/90"
+                                    title={email || "Logout"}
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </header>
         </div>
     );
 }

@@ -134,7 +134,7 @@ export default function ChessGame() {
   // ------------------ Responsive board width ------------------
   useEffect(() => {
     const compute = () => {
-      const w = Math.min(600, Math.max(360, Math.floor(window.innerWidth * 0.45)));
+      const w = Math.min(630, Math.max(360, Math.floor(window.innerWidth * 0.45)));
       setBoardWidth(w);
     };
     compute();
@@ -372,13 +372,13 @@ export default function ChessGame() {
 
   return (
     <div className="min-h-screen w-full bg-zinc-950 text-zinc-100 relative overflow-hidden">
-      <div className="mx-auto max-w-6xl px-4 py-6 md:py-5">
+      <div className="mx-auto max-w-6xl px-4 py-6 md:py-3">
         <div className="grid gap-12 md:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)]">
           {/* LEFT: board */}
           <div className="relative">
             <div className="absolute -inset-0.5 rounded-md bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-amber-400 blur opacity-50" />
-            <div className="relative rounded-md bg-zinc-900/90 ring-1 ring-white/10 p-4 md:p-6">
-              <div className="mb-3 flex items-center justify-between">
+            <div className="relative rounded-md bg-zinc-900/90 ring-1 ring-white/10 p-4 md:p-6 md:py-3">
+              <div className="mb-1 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-base uppercase font-semibold">{opponentEmail?.slice(0, 1) || "O"}</div>
                   <div className="text-sm font-semibold">{opponentEmail || 'Opponent'}</div>
