@@ -207,7 +207,7 @@ export default function JoinInvite() {
                                 ) : (
                                     <>
                                         <div className="text-sm text-zinc-300">You are not signed in.</div>
-                                        <div className="mt-3 flex flex-col sm:flex-row gap-3">
+                                        <div className="mt-5 flex flex-col sm:flex-row gap-3">
                                             <button
                                                 onClick={handleSignInRedirect}
                                                 className="flex-1 rounded-xl px-4 py-3 bg-white text-zinc-900 font-semibold"
@@ -215,17 +215,17 @@ export default function JoinInvite() {
                                                 Sign in with Google
                                             </button>
 
-                                            <button
+                                            {/* <button
                                                 onClick={handleGuest}
                                                 disabled={busy}
                                                 className="flex-1 rounded-xl px-4 py-3 bg-indigo-600 font-semibold"
                                             >
                                                 {busy ? "Creating guest…" : "Continue as Guest"}
-                                            </button>
+                                            </button> */}
                                         </div>
 
                                         <div className="text-xs text-zinc-400 mt-3">
-                                            Guests are temporary accounts. You can convert later by signing in.
+                                            Join WeChess to accept the challenge and play online with friends.
                                         </div>
                                     </>
                                 )}
