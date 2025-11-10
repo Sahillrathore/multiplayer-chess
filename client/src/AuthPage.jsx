@@ -58,8 +58,15 @@ export default function AuthPage() {
     const loggedIn = !!token;
 
     const googleSignIn = () => {
-        // Redirect user to backend Google auth endpoint
-        window.location.href = `${API_BASE}/auth/google`;
+        const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+
+        // Check if there's a redirect query param in the current URL
+        const params = new URLSearchParams(window.location.search);
+        const redirectPath = params.get("redirect") || "/"; // default to home if not specified
+
+        // Redirect user to backend Google auth endpoint with redirect param
+        const url = `${API_BASE}/auth/google?redirect=${encodeURIComponent(redirectPath)}`;
+        window.location.href = url;
     };
 
     return (
@@ -109,14 +116,14 @@ export default function AuthPage() {
                             <div>
                                 <PrimaryBtn
                                     onClick={googleSignIn}
-                                    // className="inline-flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white text-zinc-900 px-4 py-2.5 font-semibold shadow hover:bg-zinc-50 transition"
+                                // className="inline-flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white text-zinc-900 px-4 py-2.5 font-semibold shadow hover:bg-zinc-50 transition"
                                 >
                                     <FaGoogle className="text-xl" /> Continue with Google
                                 </PrimaryBtn>
 
                                 <PrimaryBtn
                                     onClick={googleSignIn}
-                                    // className="inline-flex mt-3 w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white text-zinc-900 px-4 py-2.5 font-semibold shadow hover:bg-zinc-50 transition"
+                                // className="inline-flex mt-3 w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white text-zinc-900 px-4 py-2.5 font-semibold shadow hover:bg-zinc-50 transition"
                                 >
                                     <FaGithub className="text-xl" /> Continue with Github
                                 </PrimaryBtn>

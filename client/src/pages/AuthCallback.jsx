@@ -10,40 +10,48 @@ export default function AuthCallback() {
   useEffect(() => {
     (async () => {
       try {
-        const hash = new URLSearchParams(window.location.hash.slice(1));
-        const token = hash.get('token');
+        // parse token from hash (#token=...)
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const token = hashParams.get('token');
 
         if (!token) {
-          window.location.replace('/login');
+          window.location.replace('/auth'); // or '/login'
           return;
         }
 
-        // 1) store token in redux + localStorage (authSlice handles localStorage)
+        // Store token (authSlice.setToken also saves to localStorage)
         dispatch(setToken(token));
 
-        // 2) request server profile (uses prepareHeaders -> will read token from localStorage)
-        //    We use dispatch(authApi.endpoints.me.initiate()) so the result is cached for useMeQuery hooks
+        // Optionally fetch user profile (so store has user on arrival)
         try {
           const meResult = await dispatch(authApi.endpoints.me.initiate()).unwrap();
-          // meResult shape depends on your API; adjust below if necessary
-          console.log(meResult);
-          
-          if (meResult && meResult.user) {
-            dispatch(setUser(meResult.user));
-          } else if (meResult && meResult.email) {
-            // fallback if your /me returns the user object directly (no wrapper)
-            dispatch(setUser(meResult));
+          if (meResult) {
+            if (meResult.user) dispatch(setUser(meResult.user));
+            else if (meResult.email || meResult.id) dispatch(setUser(meResult));
           }
-        } catch (meErr) {
-          // profile fetch failed — still continue but log for debugging
-          console.warn('Failed to fetch /auth/me after OAuth callback:', meErr);
+        } catch (e) {
+          console.warn('[AuthCallback] failed to fetch /auth/me', e);
         }
 
-        // 3) navigate home
-        window.location.replace('/');
+        // Determine final redirect: priority -> query 'redirect' -> localStorage.postAuthRedirect -> '/'
+        const qs = new URLSearchParams(window.location.search);
+        const redirectParam = qs.get('redirect') || null;
+        const localRedirect = localStorage.getItem('postAuthRedirect') || null;
+
+        let finalRedirect = redirectParam || localRedirect || '/';
+        if (!finalRedirect.startsWith('/')) finalRedirect = '/' + finalRedirect;
+        if (localRedirect) localStorage.removeItem('postAuthRedirect');
+
+        // Remove token from URL (so it's not visible in history)
+        // Replace current history entry with the same path without hash
+        const cleanUrl = window.location.pathname + window.location.search;
+        window.history.replaceState(null, '', cleanUrl);
+
+        // Navigate to final destination
+        window.location.replace(finalRedirect);
       } catch (err) {
-        console.error('Auth callback error:', err);
-        window.location.replace('/login');
+        console.error('[AuthCallback] unexpected error', err);
+        window.location.replace('/auth');
       }
     })();
   }, [dispatch]);

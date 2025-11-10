@@ -7,54 +7,6 @@ const Otp = require("./otp.model");
 // utils
 const pub = (u) => ({ id: u.id, email: u.email, provider: u.provider, rating: u.rating });
 
-// 1) Request OTP
-async function requestOtp(req, res) {
-  const { email } = req.body || {};
-  if (!email) return res.status(400).json({ error: "email required" });
-  console.log('otp requested', email);
-
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  await Otp.create({ email: email.toLowerCase(), code });
-  try {
-    await sendOtpEmail(email, code);
-  } catch (e) {
-    console.error("sendOtpEmail failed", e);
-    return res.status(500).json({ error: "Failed to send OTP" });
-  }
-  res.json({ ok: true });
-}
-
-// 2) Signup (verify OTP + set password)
-async function signup(req, res) {
-  const { email, otp, password } = req.body || {};
-  if (!email || !otp || !password) return res.status(400).json({ error: "email, otp, password required" });
-
-  const found = await Otp.findOne({ email: email.toLowerCase(), code: otp });
-  if (!found) return res.status(400).json({ error: "Invalid or expired OTP" });
-  await Otp.deleteMany({ email: email.toLowerCase() }); // consume OTPS
-
-  const exists = await User.findOne({ email: email.toLowerCase() });
-  if (exists) return res.status(400).json({ error: "Email already registered" });
-
-  const passwordHash = await bcrypt.hash(password, 10);
-  const user = await User.create({ email: email.toLowerCase(), passwordHash, provider: "password" });
-  const token = sign({ sub: user.id });
-  res.json({ token, user: pub(user) });
-}
-
-// 3) Login (email/password)
-async function login(req, res) {
-  const { email, password } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: "email and password required" });
-
-  const user = await User.findOne({ email: email.toLowerCase(), provider: "password" });
-  if (!user) return res.status(400).json({ error: "No such user" });
-  const ok = await bcrypt.compare(password, user.passwordHash || "");
-  if (!ok) return res.status(401).json({ error: "Invalid credentials" });
-  const token = sign({ sub: user.id });
-  res.json({ token, user: pub(user) });
-}
-
 // JWT protected profile
 async function me(req, res) {
   const auth = req.headers.authorization || "";
@@ -67,6 +19,27 @@ async function me(req, res) {
     res.json({ user: pub(user) });
   } catch {
     res.status(401).json({ error: "Invalid token" });
+  }
+}
+
+// inside module.exports add:
+async function guest(req, res) {
+  try {
+    // create a guest user record with unique placeholder email (sparse unique allowed)
+    const tokenSuffix = Math.random().toString(36).slice(2, 9);
+    const guestEmail = `guest_${Date.now().toString(36)}_${tokenSuffix}@wechess.local`;
+
+    const user = await User.create({
+      email: guestEmail,
+      provider: "guest",
+      rating: 1200,
+    });
+
+    const token = sign({ sub: user.id }); // sign uses auth jwt helper
+    res.json({ token, user: { id: user._id, email: user.email, provider: user.provider, rating: user.rating } });
+  } catch (err) {
+    console.error("[auth.guest] error", err);
+    res.status(500).json({ error: "Failed to create guest" });
   }
 }
 
@@ -92,4 +65,4 @@ async function googleSuccessOrCreate(profile) {
   return user;
 }
 
-module.exports = { requestOtp, signup, login, me, googleSuccessOrCreate, pub };
+module.exports = { me, googleSuccessOrCreate, pub };

@@ -6,6 +6,7 @@ import ChessGame from './ChessGame'
 import AuthPage from './AuthPage'
 import LandingPage from './pages/LandingPage'
 import AuthCallback from './pages/AuthCallback'
+import JoinInvite from './pages/JoinInvite'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -18,7 +19,9 @@ function App() {
           <Route path="/" element={<LandingPage/>} />
           <Route path="/login" element={<AuthPage/>} />
           <Route path="/play" element={<ChessGame/>} />
+          <Route path="/play/:gameId" element={<ChessGame />} />
           <Route path="/auth/callback" element={<AuthCallback/>} />
+          <Route path="/join/:token" element={<JoinInvite/>} />
         </Routes>
       </BrowserRouter>
     </>
