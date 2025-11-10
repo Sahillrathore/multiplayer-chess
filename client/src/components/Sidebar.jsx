@@ -5,6 +5,7 @@ import { BiSolidChess } from "react-icons/bi";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import TimeControlSelect from '../components/TimeControlSelect';
 import { setSidebarTab } from '../../src/store/slices/gameSlice';
+import InviteModal from '../components/InviteModal';
 
 export default function Sidebar({
     tcSeconds, isAuthed, status, isQueueing, findMatch, cancelQueue,
@@ -14,6 +15,7 @@ export default function Sidebar({
     resign, offerDraw, gameId
 }) {
     const dispatch = useDispatch();
+    const [inviteOpen, setInviteOpen] = React.useState(false);
     const sidebarTab = useSelector((s) => s.game.sidebarTab);
 
     // inside Sidebar component
@@ -78,15 +80,26 @@ export default function Sidebar({
                 {sidebarTab === 'new' && (
                     <>
                         <div className="flex justify-center w-full mt-2 px-8">
-                            <TimeControlSelect
-                                tcSeconds={tcSeconds}
-                                isAuthed={isAuthed}
-                                status={status}
-                                isQueueing={isQueueing}
-                                findMatch={findMatch}
-                                cancelQueue={cancelQueue}
-                            />
+                            <div className="w-full">
+                                <TimeControlSelect
+                                    tcSeconds={tcSeconds}
+                                    isAuthed={isAuthed}
+                                    status={status}
+                                    isQueueing={isQueueing}
+                                    findMatch={findMatch}
+                                    cancelQueue={cancelQueue}
+                                />
+                                <div className="mt-3 flex gap-2">
+                                    <button
+                                        onClick={() => setInviteOpen(true)}
+                                        className="w-full rounded-xl px-3 py-2 bg-indigo-600/80 font-semibold text-white hover:bg-indigo-600/90"
+                                    >
+                                        Create Challenge
+                                    </button>
+                                </div>
+                            </div>
                         </div>
+
 
                         {/* Moves list */}
                         <div className="rounded-lg bg-[#1f1f1f] mt-4 p-3 ring-1 mx-8 ring-white/5 max-h-[40vh] overflow-auto">
@@ -241,6 +254,7 @@ export default function Sidebar({
                     </div>
                 )}
             </div>
+            <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} tcSeconds={tcSeconds} />
         </div>
     );
 }

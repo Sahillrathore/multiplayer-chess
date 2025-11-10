@@ -1,4 +1,4 @@
-// sockets.js
+// server/src/game/sockets.js
 const { Server } = require("socket.io");
 const { ORIGINS } = require("../config");
 const { verify } = require("../jwt");
@@ -8,14 +8,18 @@ const {
     games, createGameRoom, tickClocks, applyIncrement, recordMoveToDB, finalizeGameInDB
 } = require("./game.service");
 
+// socketUtils exports: setUserSocket, removeUserSocket, getSocketIdForUser, emitToSocketId
+const { setUserSocket, removeUserSocket, getSocketIdForUser, emitToSocketId, setIo } = require("./socketUtils");
+
 const pendingResignTimers = new Map(); // key: userId -> timeout id
 
 function attachSocketServer(httpServer) {
     const io = new Server(httpServer, { cors: { origin: ORIGINS, methods: ["GET", "POST"] } });
-
+    
     // auth middleware: verify token and attach user ids to socket
     io.use(async (socket, next) => {
         try {
+            setIo(io);
             const token = socket.handshake.auth?.token;
             if (!token) return next(new Error("Missing token"));
             const payload = verify(token);
@@ -23,6 +27,7 @@ function attachSocketServer(httpServer) {
             if (!user) return next(new Error("Invalid token"));
             socket.userId = payload.sub;       // auth-sub (string)
             socket.userDbId = user._id;       // ObjectId
+
             next();
         } catch (e) {
             console.error("[socket auth] error:", e && e.message);
@@ -32,6 +37,13 @@ function attachSocketServer(httpServer) {
 
     io.on("connection", async (socket) => {
         console.log(`[socket] connected: ${socket.id} userId=${socket.userId} userDbId=${socket.userDbId}`);
+
+        // register mapping userId -> socketId
+        try {
+            setUserSocket(String(socket.userId), socket.id);
+        } catch (e) {
+            console.warn("[sockets] setUserSocket failed", e && e.message);
+        }
 
         // clear any pending resign timer for this user (they reconnected)
         const t = pendingResignTimers.get(socket.userId);
@@ -47,14 +59,11 @@ function attachSocketServer(httpServer) {
 
             // NOTE: g.white.userId / g.black.userId are auth userId strings
             try {
-                if (g.white.userId === socket.userId) {
+                if (String(g.white.userId) === String(socket.userId)) {
                     g.white.socketId = socket.id;
                     io.sockets.sockets.get(socket.id)?.join(g.id);
 
-                    // fetch opponent email (black) robustly
                     const oppDoc = await safeFindUserById(g.black.userDbId);
-                    console.log(g.black.userDbId);
-                    
                     const opponentEmail = oppDoc?.email ?? null;
 
                     console.log(`[resume] resuming for white ${socket.userId} in game ${g.id}, opponentEmail=${opponentEmail}`);
@@ -72,15 +81,14 @@ function attachSocketServer(httpServer) {
                     });
                 }
 
-                if (g.black.userId === socket.userId) {
+                if (String(g.black.userId) === String(socket.userId)) {
                     g.black.socketId = socket.id;
                     io.sockets.sockets.get(socket.id)?.join(g.id);
 
                     const oppDoc = await safeFindUserById(g.white.userDbId);
-                    console.log('78', g.white.userDbId);
-                    
                     const opponentEmail = oppDoc?.email ?? null;
-
+                    console.log(oppDoc);
+                    
                     console.log(`[resume] resuming for black ${socket.userId} in game ${g.id}, opponentEmail=${opponentEmail}`);
                     io.to(socket.id).emit("game:resume", {
                         gameId: g.id,
@@ -103,7 +111,6 @@ function attachSocketServer(httpServer) {
         // ----------------------------
         // queue:join -> enqueue + maybe match
         // ----------------------------
-
         function userHasActiveGame(userId) {
             if (!userId) return false;
             for (const g of games.values()) {
@@ -125,20 +132,15 @@ function attachSocketServer(httpServer) {
             }
 
             // 2) Prevent duplicate queue entries for same user (by userId/socketId)
-            // The enqueue implementation prevents duplicates, but let's remove any stale ones just in case
             removeFromQueues(socket.id);
             removeFromQueues(socket.userId);
 
             // Enqueue
             enqueue(timeControl, { socketId: socket.id, userId: socket.userId, userDbId: socket.userDbId, timeControl });
 
-            // Try to find a pair — pass an isValid predicate that ensures queued users still are eligible:
-            // - user still not in an active game
-            // - socket still connected (optional; we check io.sockets.sockets)
+            // Try to find a pair
             const pair = dequeuePair(timeControl, (item) => {
-                // skip if user now has an active game
                 if (userHasActiveGame(item.userId)) return false;
-                // check socket still connected
                 const s = io.sockets.sockets.get(item.socketId);
                 if (!s || s.disconnected) return false;
                 return true;
@@ -157,8 +159,7 @@ function attachSocketServer(httpServer) {
             io.sockets.sockets.get(room.white.socketId)?.join(room.id);
             io.sockets.sockets.get(room.black.socketId)?.join(room.id);
 
-            // fetch emails etc (existing logic) ...
-            // (use safeFindUserById as you already have)
+            // fetch emails etc
             let whiteEmail = null, blackEmail = null;
             try {
                 const [wDoc, bDoc] = await Promise.all([
@@ -224,7 +225,7 @@ function attachSocketServer(httpServer) {
             }
 
             g.moves.push({ san: move.san, from, to, fen: g.chess.fen() });
-            await recordMoveToDB(g, { san: move.san, from, to, captured: move.captured || null });
+            await recordMoveToDB(g, { san: move.san, from: move.from, to: move.to, captured: move.captured || null });
 
             io.to(g.id).emit("game:move", {
                 san: move.san,
@@ -245,8 +246,6 @@ function attachSocketServer(httpServer) {
 
         socket.on("game:offerDraw", ({ gameId }) => {
             const g = games.get(gameId);
-            console.log(g);
-            
             if (!g || g.status !== "active") return;
             const side = socket.id === g.white.socketId ? "w" : socket.id === g.black.socketId ? "b" : null;
             if (!side) return;
@@ -275,6 +274,13 @@ function attachSocketServer(httpServer) {
         socket.on("disconnect", (reason) => {
             console.log(`[socket] disconnect ${socket.id} user=${socket.userId} reason=${reason}`);
             removeFromQueues(socket.id);
+
+            // remove user->socket mapping
+            try {
+                removeUserSocket(String(socket.userId));
+            } catch (e) {
+                console.warn("[sockets] removeUserSocket failed", e && e.message);
+            }
 
             const GRACE_MS = 8000; // 8 seconds – tune as you like
 
@@ -359,4 +365,4 @@ async function safeFindUserById(id) {
     }
 }
 
-module.exports = { attachSocketServer };
+module.exports = { attachSocketServer, emitState };

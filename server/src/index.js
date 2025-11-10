@@ -10,6 +10,7 @@ const { connectDB } = require("./db");
 const { PORT = 4000, ORIGINS = [] } = require("./config");
 const authRoutes = require("./auth/auth.routes");
 const gamesRoutes = require("./routes/games.routes");
+const challengeRoutes = require("./routes/challenges.routes");
 const { attachSocketServer } = require("./game/sockets");
 
 // Initialize DB once (ok in serverless—runs on cold start)
@@ -33,6 +34,7 @@ app.use(express.json());
 app.get("/health", (_req, res) => res.json({ ok: true }));
 app.get("/test", (_req, res) => res.json({ message: "API is working" }));
 app.use("/auth", authRoutes);
+app.use("/challenges", challengeRoutes);
 app.use("/games", gamesRoutes);
 
 // Export the Express app for Vercel serverless

@@ -2,13 +2,13 @@ import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
-import { FaRegSquarePlus } from "react-icons/fa6";
-import { BiSolidChess } from "react-icons/bi";
+
 
 import GameReview from './components/GameReview';
 import Sidebar from './components/Sidebar';
 import PromotionPrompt from './components/PromotionPrompt';
-
+import { authGuest, joinChallenge, fetchGameDetails } from '../src/store/services/challenges'; // adjust path
+import { useParams } from "react-router-dom";
 import { setTimeControl, setSidebarTab, setReviewing, queueStart, queueStop } from '../src/store/slices/gameSlice';
 
 import {
@@ -115,9 +115,46 @@ export default function ChessGame() {
     return `${turn === 'w' ? 'White' : 'Black'} to move`;
   }, [isAuthed, status, turn]);
 
+  const { gameId: routeGameId } = useParams(); // rename variable to avoid conflict with state.gameId
+  useEffect(() => {
+    let cancelled = false;
+    async function loadGameFromServer(id) {
+      try {
+        const g = await fetchGameDetails(id); // GET /games/:id
+        if (cancelled) return;
+        // g: { _id, timeControl, youAre, moves, startFEN, pgn, whiteId, blackId }
+        const payload = {
+          gameId: id,
+          color: g.youAre || (g.whiteId && String(g.whiteId) === String(user?.id) ? "w" : "b"),
+          fen: g.startFEN || "start",
+          moves: g.moves || [],
+          clocks: { w: Number(g.timeControl?.split("+")[0] || 300) * 1000, b: Number(g.timeControl?.split("+")[0] || 300) * 1000 },
+          turn: "w",
+          status: "active",
+          opponent: {
+            id: g.youAre === "w" ? g.blackId : g.whiteId,
+            email: null // server / socket will emit opponentEmail; optional: extend /games/:id to include emails
+          }
+        };
+        dispatch(resumeGame(payload));
+      } catch (e) {
+        console.warn("[play route] fetchGameDetails failed", e);
+      }
+    }
+
+    if (routeGameId) {
+      // if Redux already has this gameId and status active, don't re-fetch
+      if (gameId !== routeGameId) {
+        loadGameFromServer(routeGameId);
+      }
+    }
+    return () => { cancelled = true; };
+  }, [routeGameId, dispatch]);
+
+
   // ------------------ Sound setup ------------------
   useEffect(() => {
-   
+
     const base = '/sounds';
     moveSoundRef.current = new Audio(`${base}/move.mp3`);
     captureSoundRef.current = new Audio(`${base}/capture.mp3`);
@@ -127,7 +164,7 @@ export default function ChessGame() {
 
     // Preload
     [moveSoundRef, captureSoundRef, checkSoundRef, rewindSoundRef, gameEndSoundRef].forEach(r => {
-      try { if (r.current) r.current.preload = 'auto'; } catch(e) {}
+      try { if (r.current) r.current.preload = 'auto'; } catch (e) { }
     });
   }, []);
 
@@ -154,9 +191,9 @@ export default function ChessGame() {
       if (last) {
         // capture
         if (last.captured) {
-          try { captureSoundRef.current?.play(); } catch (e) {}
+          try { captureSoundRef.current?.play(); } catch (e) { }
         } else {
-          try { moveSoundRef.current?.play(); } catch (e) {}
+          try { moveSoundRef.current?.play(); } catch (e) { }
         }
         // check: create a chess position from the move's fen (if available)
         if (last.fen) {
@@ -165,7 +202,7 @@ export default function ChessGame() {
             // After a move, the side to move is the side NOT just moved.
             // If that side is in check -> the previous move gave check.
             if (c.in_check()) {
-              try { checkSoundRef.current?.play(); } catch (e) {}
+              try { checkSoundRef.current?.play(); } catch (e) { }
             }
           } catch (e) { console.log(e) }
         }
@@ -278,7 +315,7 @@ export default function ChessGame() {
   // ------------------ Seek / rewind sound ------------------
   function seekToMoveIndex(idx) {
     // play rewind sound when user moves to a previous or different move
-    try { rewindSoundRef.current?.play(); } catch (e) {}
+    try { rewindSoundRef.current?.play(); } catch (e) { }
 
     if (idx < 0) {
       setOverrideFen(null);
@@ -362,7 +399,7 @@ export default function ChessGame() {
       const msg = 'Game Over';
       setGameEndMessage(msg);
       setShowGameEndModal(true);
-      try { gameEndSoundRef.current?.play(); } catch (e) {}
+      try { gameEndSoundRef.current?.play(); } catch (e) { }
     }
     prevStatusRef.current = status;
   }, [status, moves]);
