@@ -3,6 +3,7 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/slices/authSlice";
+import LightRays from "../components/LightRays";
 
 function shortEmail(e) {
     if (!e) return "";
@@ -33,6 +34,22 @@ export default function Landing() {
 
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden">
+
+            <div style={{ width: '100%', height: '600px', position: 'absolute' }}>
+                <LightRays
+                    raysOrigin="top-center"
+                    raysColor="#eeeee"
+                    raysSpeed={0.6}
+                    lightSpread={0.8}
+                    rayLength={1.2}
+                    followMouse={false}
+                    mouseInfluence={0.1}
+                    noiseAmount={0.1}
+                    distortion={0.05}
+                    className="custom-rays"
+                />
+            </div>
+
             {/* Subtle background word / blob */}
             <div className="pointer-events-none absolute inset-0 opacity-10">
                 <div className="absolute -top-16 -right-20 h-[46rem] w-[46rem] rounded-full bg-gradient-to-br from-zinc-700 via-zinc-800 to-black blur-3xl" />
@@ -96,7 +113,7 @@ export default function Landing() {
                 <div className="mx-auto max-w-full px-5 pt-6 pb-24 flex flex-col gap-12 justify-center items-center">
                     {/* Left copy */}
                     <div className="max-w-xl flex items-center flex-col text-center">
-                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
+                        <h1 className="text-4xl sm:text-5xl  lg:text-6xl font-bold leading-tight">
                             Play Chess Online
                             <br />
                             on the <span className="whitespace-nowrap">#1 Site!</span>
