@@ -156,9 +156,9 @@ export default function Landing() {
                             >
                                 ▶ Play Online
                             </button>
-                            <button className="px-5 py-2.5 rounded-full text-sm font-semibold bg-zinc-900 border border-white/10 hover:bg-zinc-800">
+                            <Link to="/practice" className="px-5 py-2.5 rounded-full text-sm font-semibold bg-zinc-900 border border-white/10 hover:bg-zinc-800">
                                 🤖 Play Bots
-                            </button>
+                            </Link>
                         </div>
                     </div>
 
@@ -168,6 +168,29 @@ export default function Landing() {
                     </div>
                 </div>
             </main>
+
+            {/* Footer */}
+            <footer className="relative z-10 mt-10 border-t border-white/10">
+                <div className="mx-auto max-w-7xl px-5 py-6 flex flex-col sm:flex-row items-center justify-between text-sm text-zinc-400">
+
+                    <div className="flex items-center gap-1">
+                        Made with
+                        <span className="text-red-500 text-base">❤️</span>
+                        by <span className="font-medium text-white">Sahil Rathore</span>
+                    </div>
+
+                    <a
+                        href="https://github.com/Sahillrathore/multiplayer-chess"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-white transition"
+                    >
+                        ⭐ View GitHub Repo
+                    </a>
+
+                </div>
+            </footer>
+
         </div>
     );
 }
