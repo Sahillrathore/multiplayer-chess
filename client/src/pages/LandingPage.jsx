@@ -7,11 +7,27 @@ import LightRays from "../components/LightRays";
 
 function shortEmail(e) {
     if (!e) return "";
-    // keep it short for UI: john.doe@ex...
     const [name, domain] = e.split("@");
     if (!domain) return e;
     if (name.length <= 10) return e;
     return `${name.slice(0, 10)}…@${domain}`;
+}
+
+/* 🔳 Subtle grid overlay */
+function GridOverlay() {
+    return (
+        <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none opacity-[0.7]"
+            style={{
+                backgroundImage:
+                    `repeating-linear-gradient(0deg, rgba(255,255,255,0.15) 0 1px, transparent 1px 40px),
+                     repeating-linear-gradient(90deg, rgba(255,255,255,0.15) 0 1px, transparent 1px 40px)`,
+                backgroundSize: "40px 40px",
+                // mixBlendMode: "overlay",
+            }}
+        />
+    );
 }
 
 export default function Landing() {
@@ -20,7 +36,6 @@ export default function Landing() {
     const { token, user } = useSelector((s) => s.auth);
     const isAuthed = !!token;
     const email = user?.email;
-    console.log(user);
 
     const handlePlay = () => {
         if (isAuthed) navigate("/play");
@@ -35,10 +50,14 @@ export default function Landing() {
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden">
 
-            <div style={{ width: '100%', height: '600px', position: 'absolute' }}>
+            {/* 🔳 New Grid Background */}
+            <GridOverlay />
+
+            {/* 🔆 Light Rays */}
+            <div style={{ width: "100%", height: "600px", position: "absolute", top: 0 }}>
                 <LightRays
                     raysOrigin="top-center"
-                    raysColor="#eeeee"
+                    raysColor="#E9D8BF"
                     raysSpeed={0.6}
                     lightSpread={0.8}
                     rayLength={1.2}
@@ -46,17 +65,19 @@ export default function Landing() {
                     mouseInfluence={0.1}
                     noiseAmount={0.1}
                     distortion={0.05}
-                    className="custom-rays"
                 />
             </div>
 
-            {/* Subtle background word / blob */}
-            <div className="pointer-events-none absolute inset-0 opacity-10">
-                <div className="absolute -top-16 -right-20 h-[46rem] w-[46rem] rounded-full bg-gradient-to-br from-zinc-700 via-zinc-800 to-black blur-3xl" />
-                <div className="absolute -bottom-20 -left-32 h-[40rem] w-[40rem] rounded-full bg-gradient-to-br from-zinc-800 via-black to-black blur-3xl" />
+            {/* 🌫️ Enhanced gradient blobs */}
+            <div className="pointer-events-none absolute inset-0 opacity-20">
+                <div className="absolute -top-32 -right-40 h-[48rem] w-[48rem] rounded-full bg-gradient-to-br from-zinc-600 via-zinc-800 to-black blur-3xl" />
+                <div className="absolute -bottom-32 -left-40 h-[42rem] w-[42rem] rounded-full bg-gradient-to-br from-zinc-700 via-black to-black blur-3xl" />
             </div>
 
-            {/* Top nav */}
+            {/* 🔘 Soft vignette to focus center */}
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle,transparent,rgba(0,0,0,0.7))]" />
+
+            {/* -------- NAV -------- */}
             <header className="relative z-10">
                 <div className="mx-auto max-w-7xl px-5 py-6 flex items-center justify-between">
                     <div className="text-xl tracking-[0.35em] font-semibold">CHESS</div>
@@ -88,13 +109,6 @@ export default function Landing() {
                             </>
                         ) : (
                             <div className="flex items-center gap-3">
-                                {/* small email pill */}
-                                {/* <div className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs text-zinc-200">
-                                    <span className="font-medium">{shortEmail(email)}</span>
-                                    <span className="text-zinc-400">·</span>
-                                    <span className="text-zinc-400 text-[11px]">signed in</span>
-                                </div> */}
-
                                 <button
                                     onClick={handleLogout}
                                     className="px-4 py-2 rounded-full text-sm font-semibold bg-white text-black hover:bg-white/90"
@@ -108,15 +122,16 @@ export default function Landing() {
                 </div>
             </header>
 
-            {/* Hero */}
+            {/* -------- HERO -------- */}
             <main className="relative z-10 pt-10">
                 <div className="mx-auto max-w-full px-5 pt-6 pb-24 flex flex-col gap-12 justify-center items-center">
-                    {/* Left copy */}
+
+                    {/* TEXT SECTION */}
                     <div className="max-w-xl flex items-center flex-col text-center">
-                        <h1 className="text-4xl sm:text-5xl  lg:text-6xl font-bold leading-tight">
+                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] font-serif">
                             Play Chess Online
                             <br />
-                            on the <span className="whitespace-nowrap">#1 Site!</span>
+                            on the <span className="whitespace-nowrap text-white/90">#1 Site!</span>
                         </h1>
 
                         <div className="mt-6 flex flex-wrap items-center gap-x-10 gap-y-2 text-zinc-300">
@@ -128,7 +143,6 @@ export default function Landing() {
                             </div>
                         </div>
 
-                        {/* If logged in, show a greeting with the full email under the hero */}
                         {isAuthed && email && (
                             <div className="mt-4 rounded-xl bg-white/5 px-4 py-2 text-sm text-zinc-100">
                                 Welcome, <span className="font-semibold">{email}</span>
@@ -148,63 +162,12 @@ export default function Landing() {
                         </div>
                     </div>
 
-                    {/* Right image */}
+                    {/* IMAGE SECTION */}
                     <div className="w-[60rem] relative -top-10">
-                        <img src="/chess.png" className="h-full w-full" alt="Chess board preview" />
+                        <img src="/chess2.png" className="h-full w-full" alt="Chess board preview" />
                     </div>
                 </div>
             </main>
-
-            <header className="relative z-10">
-                <div className="mx-auto max-w-7xl px-5 py-6 flex items-center justify-between">
-                    <div className="text-xl tracking-[0.35em] font-semibold">CHESS</div>
-
-                    <nav className="hidden md:flex items-center gap-7 text-sm text-zinc-300">
-                        <a className="hover:text-white transition" href="#">Puzzles</a>
-                        <a className="hover:text-white transition" href="#">Learn</a>
-                        <a className="hover:text-white transition" href="#">Watch</a>
-                        <a className="hover:text-white transition" href="#">News</a>
-                        <a className="hover:text-white transition" href="#">Social</a>
-                        <a className="hover:text-white transition" href="#">More</a>
-                    </nav>
-
-                    <div className="flex items-center gap-3">
-                        {!isAuthed ? (
-                            <>
-                                <Link
-                                    to="/login"
-                                    className="hidden sm:inline-block px-4 py-2 rounded-full text-sm font-medium border border-white/15 hover:bg-white/5"
-                                >
-                                    Login
-                                </Link>
-                                <Link
-                                    to="/login"
-                                    className="px-4 py-2 rounded-full text-sm font-semibold bg-white text-black hover:bg-white/90"
-                                >
-                                    Sign In
-                                </Link>
-                            </>
-                        ) : (
-                            <div className="flex items-center gap-3">
-                                {/* small email pill */}
-                                {/* <div className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs text-zinc-200">
-                                    <span className="font-medium">{shortEmail(email)}</span>
-                                    <span className="text-zinc-400">·</span>
-                                    <span className="text-zinc-400 text-[11px]">signed in</span>
-                                </div> */}
-
-                                <button
-                                    onClick={handleLogout}
-                                    className="px-4 py-2 rounded-full text-sm font-semibold bg-white text-black hover:bg-white/90"
-                                    title={email || "Logout"}
-                                >
-                                    Logout
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </header>
         </div>
     );
 }
