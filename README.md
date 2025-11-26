@@ -7,6 +7,11 @@ Players can compete online, spectate matches, and even **share challenge links t
 
 ---
 
+<div style="display: flex; gap: 10px;">
+  <img src="./client/public/landingpage.png" width="400"/>
+  <img src="./client/public/board.png" width="400"/>
+</div>
+
 ## ✨ Features
 
 - 🧑‍🤝‍🧑 **Multiplayer Chess with Live Moves**
