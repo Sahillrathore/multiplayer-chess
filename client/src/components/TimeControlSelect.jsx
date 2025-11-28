@@ -18,7 +18,7 @@ export default function TimeControlSelect({ tcSeconds, isAuthed, status, isQueue
   const currentOption = options.find((opt) => opt.value === tcSeconds);
 
   return (
-    <div className="mb-3 px-0 mt-5 w-full">
+    <div className="mb-1 px-0 mt-5 w-full">
       <div className="flex items-center gap-0 flex-col relative">
         {/* Custom Select */}
         <div
@@ -56,19 +56,19 @@ export default function TimeControlSelect({ tcSeconds, isAuthed, status, isQueue
         <button
           onClick={findMatch}
           disabled={!isAuthed || status === "active" || isQueueing}
-          className="rounded-lg w-full px-3 py-2 mt-2 bg-emerald-600 text-lg font-bold disabled:opacity-60"
+          className="rounded-lg w-full text-base disabled:cursor-not-allowed px-3 py-2 mt-3 bg-emerald-600 font-bold disabled:opacity-60"
         >
           Start Game
         </button>
 
-        {isQueueing && (
+        {/* {isQueueing && (
           <button
             onClick={cancelQueue}
             className="rounded-xl px-3 py-1 mt-2 bg-rose-600 text-xs"
           >
             Cancel
           </button>
-        )}
+        )} */}
       </div>
     </div>
   );

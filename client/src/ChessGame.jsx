@@ -409,15 +409,18 @@ export default function ChessGame() {
 
   return (
     <div className="min-h-screen w-full bg-zinc-950 text-zinc-100 relative overflow-hidden">
-      <div className="mx-auto max-w-6xl px-4 py-6 md:py-3">
-        <div className="grid gap-12 md:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)]">
+      <div className="absolute w-72 h-72 bg-purple-600/20 blur-3xl rounded-full -top-20 -left-20 animate-"></div>
+      <div className="absolute w-72 h-72 bg-blue-600/30 blur-3xl rounded-full -bottom-10 -right-10"></div>
+
+      <div className="mx-auto max-w-[68rem] sm:px-4 py-6 md:py-3">
+        <div className="grid gap-12">
           {/* LEFT: board */}
-          <div className="relative">
+          <div className="relative flex sm:flex-row flex-col gap-2 w-full">
             <div className="absolute -inset-0.5 rounded-md bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-amber-400 blur opacity-50" />
-            <div className="relative rounded-md bg-zinc-900/90 ring-1 ring-white/10 p-4 md:p-6 md:py-3">
+            <div className="relative sm:rounded-xl bg-black ring-1 ring-white/10 p-1 sm:p-4 md:p-6 md:py-3">
               <div className="mb-1 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-base uppercase font-semibold">{opponentEmail?.slice(0, 1) || "O"}</div>
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-base uppercase font-semibold">{opponentEmail?.slice(0, 1) || "O"}</div>
                   <div className="text-sm font-semibold">{opponentEmail || 'Opponent'}</div>
                 </div>
                 <div className="text-sm text-zinc-300">{statusText}</div>
@@ -468,29 +471,31 @@ export default function ChessGame() {
                 </>
               )}
             </div>
+
+            {/* RIGHT: Sidebar component */}
+            <Sidebar
+              tcSeconds={tcSeconds}
+              isAuthed={isAuthed}
+              status={status}
+              isQueueing={isQueueing}
+              findMatch={findMatch}
+              cancelQueue={cancelQueue}
+              moveRows={moveRows}
+              movesCount={(moves && moves.length) || 0}
+              selectedMoveIndex={selectedMoveIndex}
+              seekToMoveIndex={seekToMoveIndex}
+              history={history}
+              historyLoading={historyLoading}
+              historyError={historyError}
+              openReviewOnBoard={openReviewOnBoard}
+              reviewing={reviewing}
+              gameId={gameId}
+              offerDraw={offerDraw}
+              resign={resign}
+            />
           </div>
 
-          {/* RIGHT: Sidebar component */}
-          <Sidebar
-            tcSeconds={tcSeconds}
-            isAuthed={isAuthed}
-            status={status}
-            isQueueing={isQueueing}
-            findMatch={findMatch}
-            cancelQueue={cancelQueue}
-            moveRows={moveRows}
-            movesCount={(moves && moves.length) || 0}
-            selectedMoveIndex={selectedMoveIndex}
-            seekToMoveIndex={seekToMoveIndex}
-            history={history}
-            historyLoading={historyLoading}
-            historyError={historyError}
-            openReviewOnBoard={openReviewOnBoard}
-            reviewing={reviewing}
-            gameId={gameId}
-            offerDraw={offerDraw}
-            resign={resign}
-          />
+
         </div>
       </div>
 

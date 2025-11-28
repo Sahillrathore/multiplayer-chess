@@ -83,12 +83,10 @@ export default function Landing() {
                     <div className="text-xl tracking-[0.35em] font-semibold">CHESS</div>
 
                     <nav className="hidden md:flex items-center gap-7 text-sm text-zinc-300">
-                        <a className="hover:text-white transition" href="#">Puzzles</a>
-                        <a className="hover:text-white transition" href="#">Learn</a>
-                        <a className="hover:text-white transition" href="#">Watch</a>
-                        <a className="hover:text-white transition" href="#">News</a>
-                        <a className="hover:text-white transition" href="#">Social</a>
-                        <a className="hover:text-white transition" href="#">More</a>
+                        <Link to="/play" className="hover:text-white transition">Play</Link>
+                        <Link to="/practice" className="hover:text-white transition">Learn</Link>
+                        <Link to="/blogs" className="hover:text-white transition">News</Link>
+                        <Link to="/practice" className="hover:text-white transition">Practice</Link>
                     </nav>
 
                     <div className="flex items-center gap-3">
@@ -124,7 +122,7 @@ export default function Landing() {
 
             {/* -------- HERO -------- */}
             <main className="relative z-10 pt-10">
-                <div className="mx-auto max-w-full px-5 pt-6 pb-24 flex flex-col gap-12 justify-center items-center">
+                <div className="mx-auto max-w-full px-5 pt-6 pb-0 flex flex-col gap-12 justify-center items-center">
 
                     {/* TEXT SECTION */}
                     <div className="max-w-xl flex items-center flex-col text-center">
