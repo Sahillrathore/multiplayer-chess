@@ -121,12 +121,12 @@ export default function AuthPage() {
                                     <FaGoogle className="text-xl" /> Continue with Google
                                 </PrimaryBtn>
 
-                                <PrimaryBtn
+                                {/* <PrimaryBtn
                                     onClick={googleSignIn}
                                 // className="inline-flex mt-3 w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white text-zinc-900 px-4 py-2.5 font-semibold shadow hover:bg-zinc-50 transition"
                                 >
                                     <FaGithub className="text-xl" /> Continue with Github
-                                </PrimaryBtn>
+                                </PrimaryBtn> */}
                             </div>
 
                             {loggedIn && (
