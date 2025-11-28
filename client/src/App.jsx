@@ -8,6 +8,8 @@ import LandingPage from './pages/LandingPage'
 import AuthCallback from './pages/AuthCallback'
 import JoinInvite from './pages/JoinInvite'
 import PracticeGame from './pages/PracticeGame'
+import ProtectedRoute from './components/ProtectedRoute'
+import NotFound from './pages/NotFound'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -19,11 +21,12 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage/>} />
           <Route path="/login" element={<AuthPage/>} />
-          <Route path="/play" element={<ChessGame/>} /> 
+          <Route path="/play" element={ <ProtectedRoute> <ChessGame/> </ProtectedRoute>} /> 
           <Route path='practice' element={<PracticeGame />} />
           <Route path="/play/:gameId" element={<ChessGame />} />
           <Route path="/auth/callback" element={<AuthCallback/>} />
           <Route path="/join/:token" element={<JoinInvite/>} />
+          <Route path="*" element={<NotFound/>} />
         </Routes>
       </BrowserRouter>
     </>
