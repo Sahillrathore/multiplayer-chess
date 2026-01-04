@@ -10,6 +10,7 @@ export default function GameReview({ token, gameMeta, onClose }) {
   const [detail, setDetail] = useState(null);
   const [moveIndex, setMoveIndex] = useState(-1); // -1 = start position
   const [playing, setPlaying] = useState(false);
+  const [boardWidth, setBoardWidth] = useState(520);
 
   // load the game detail
   useEffect(() => {
@@ -51,6 +52,16 @@ export default function GameReview({ token, gameMeta, onClose }) {
     return () => clearTimeout(id);
   }, [playing, moveIndex, detail]);
 
+    useEffect(() => {
+      const compute = () => {
+        const w = Math.min(630, Math.max(360, Math.floor(window.innerWidth * 0.45)));
+        setBoardWidth(w);
+      };
+      compute();
+      window.addEventListener('resize', compute);
+      return () => window.removeEventListener('resize', compute);
+    }, []);
+  
   if (loading) return <div className="text-xs text-zinc-400">Loading…</div>;
   if (!detail) return <div className="text-xs text-rose-400">Failed to load game.</div>;
 
@@ -58,7 +69,7 @@ export default function GameReview({ token, gameMeta, onClose }) {
   const orient = detail.youAre === "b" ? "black" : "white";
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-[40vw]">
       <div className="flex items-center justify-between ">
         <div className="text-sm text-zinc-300">
           {new Date(detail.startedAt).toLocaleString()} · {detail.timeControl} · {detail.result || "—"}
@@ -71,7 +82,7 @@ export default function GameReview({ token, gameMeta, onClose }) {
         </button>
       </div>
 
-      <div className="grid gap-4 ">
+      <div className="grid gap-4 min-w-[40vw]">
         <div className="rounded-2xl bg-zinc-900/90 ring-1 ring-white/10 p-3">
           <Chessboard
             position={fen}
@@ -81,6 +92,7 @@ export default function GameReview({ token, gameMeta, onClose }) {
             customBoardStyle={{ borderRadius: "10px", boxShadow: "0 10px 30px rgba(0,0,0,.35)" }}
             customDarkSquareStyle={{ backgroundColor: "#769656" }}
             customLightSquareStyle={{ backgroundColor: "#eeeed2" }}
+            boardWidth={boardWidth}
           />
 
           {/* controls */}
